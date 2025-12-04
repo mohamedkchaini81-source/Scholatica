@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SCHOLATICA | The Future of Learning</title>
+    
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg: #02040a;
+            --primary: #3b82f6;
+            --cyan: #06b6d4;
+            --accent: #d946ef;
+            --glass: rgba(15, 23, 42, 0.6);
+            --border: rgba(255, 255, 255, 0.1);
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            background: var(--bg); color: white; 
+            font-family: 'Inter', sans-serif; overflow-x: hidden; 
+        }
+
+        /* --- 3D CANVAS BACKGROUND --- */
+        #world {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1; opacity: 0.6;
+        }
+
+        /* --- TYPOGRAPHY & UTILS --- */
+        h1, h2, h3 { font-family: 'Orbitron'; text-transform: uppercase; letter-spacing: 2px; }
+        .gradient-text {
+            background: linear-gradient(90deg, #fff, var(--cyan));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+        .section-padding { padding: 100px 0; }
+
+        /* --- GLITCH EFFECT --- */
+        .glitch { position: relative; color: white; }
+        .glitch::before, .glitch::after {
+            content: attr(data-text); position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg); opacity: 0.8;
+        }
+        .glitch::before { animation: glitch-anim-1 2s infinite linear alternate-reverse; clip-path: inset(0 0 0 0); left: -2px; text-shadow: -2px 0 red; }
+        .glitch::after { animation: glitch-anim-2 3s infinite linear alternate-reverse; clip-path: inset(0 0 0 0); left: 2px; text-shadow: -2px 0 blue; }
+        
+        @keyframes glitch-anim-1 { 0% { clip-path: inset(20% 0 80% 0); } 100% { clip-path: inset(80% 0 10% 0); } }
+        @keyframes glitch-anim-2 { 0% { clip-path: inset(10% 0 50% 0); } 100% { clip-path: inset(40% 0 90% 0); } }
+
+        /* --- HERO SECTION --- */
+        .hero { height: 100vh; display: flex; align-items: center; justify-content: center; text-align: center; position: relative; }
+        .hero h1 { font-size: 5rem; margin-bottom: 20px; text-shadow: 0 0 30px rgba(6, 182, 212, 0.5); }
+        .hero p { font-size: 1.2rem; color: #94a3b8; max-width: 600px; margin: 0 auto 40px; }
+        .btn-main {
+            padding: 15px 40px; background: linear-gradient(90deg, var(--primary), var(--cyan));
+            border: none; color: white; font-weight: bold; font-family: 'Orbitron'; font-size: 1rem;
+            border-radius: 5px; cursor: pointer; text-decoration: none; display: inline-block;
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.4); transition: 0.3s;
+        }
+        .btn-main:hover { transform: scale(1.05); box-shadow: 0 0 40px rgba(6, 182, 212, 0.6); }
+
+        /* --- CARDS & GLASS --- */
+        .glass-card {
+            background: var(--glass); backdrop-filter: blur(15px);
+            border: 1px solid var(--border); border-radius: 20px;
+            padding: 40px; transition: 0.4s; position: relative; overflow: hidden;
+        }
+        .glass-card:hover { border-color: var(--cyan); transform: translateY(-10px); }
+        .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; }
+
+        /* --- SCANNER UI --- */
+        .scanner-box {
+            border: 2px dashed var(--border); border-radius: 20px;
+            height: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer; position: relative; overflow: hidden; transition: 0.3s;
+        }
+        .scanner-box:hover { border-color: var(--cyan); background: rgba(6,182,212,0.05); }
+        .scan-line {
+            position: absolute; width: 100%; height: 4px; background: var(--cyan);
+            box-shadow: 0 0 20px var(--cyan); top: 0; left: 0; display: none;
+            animation: scanning 2s infinite linear;
+        }
+        @keyframes scanning { 0% {top: 0} 50% {top: 100%} 100% {top: 0} }
+
+        /* --- MODALS (SHARED STYLES) --- */
+        .custom-modal {
+            position: fixed; inset: 0; z-index: 2000;
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(10px);
+            display: none; align-items: center; justify-content: center;
+            opacity: 0; transition: opacity 0.3s ease;
+        }
+        .custom-modal.active { opacity: 1; display: flex; }
+        
+        .modal-content {
+            width: 600px; max-width: 90%;
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid var(--cyan);
+            box-shadow: 0 0 50px rgba(6, 182, 212, 0.2);
+            padding: 40px; border-radius: 20px;
+            position: relative;
+            transform: scale(0.9); transition: transform 0.3s;
+        }
+        .custom-modal.active .modal-content { transform: scale(1); }
+        
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; color: var(--cyan); margin-bottom: 8px; font-size: 0.9rem; font-family: 'Orbitron'; }
+        
+        input, textarea, select {
+            width: 100%; padding: 15px; background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border); color: white; border-radius: 5px; 
+            font-family: 'Inter'; outline: none; transition: 0.3s;
+        }
+        input:focus, textarea:focus, select:focus { border-color: var(--cyan); box-shadow: 0 0 10px rgba(6,182,212,0.2); }
+
+        .close-modal {
+            position: absolute; top: 20px; right: 20px; color: #fff; 
+            cursor: pointer; font-size: 24px; transition: 0.3s;
+        }
+        .close-modal:hover { color: var(--accent); }
+
+        /* --- FOOTER --- */
+        footer { background: #000; padding: 50px 0; border-top: 1px solid var(--border); }
+        
+        @media(max-width: 768px) { .hero h1 { font-size: 3rem; } }
+    </style>
+</head>
+<body>
+
+    <!-- 1. 3D BACKGROUND ENGINE -->
+    <canvas id="world"></canvas>
+
+    <!-- 2. HERO SECTION -->
+    <section class="hero">
+        <div class="container">
+            <h1 class="glitch" data-text="SCHOLATICA">SCHOLATICA</h1>
+            <p>The first AI-Neural Interface for academic excellence. Optimized cognitive learning paths for modern universities.</p>
+            <div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap;">
+                <!-- Updated Buttons to Open Modal -->
+                <button onclick="openVerificationModal('student')" class="btn-main">INITIALIZE STUDENT</button>
+                <button onclick="openVerificationModal('teacher')" class="btn-main" style="background: transparent; border: 1px solid var(--cyan);">FACULTY ACCESS</button>
+            </div>
+            <div style="margin-top: 50px; display: flex; gap: 40px; justify-content: center; opacity: 0.7; font-size: 0.9rem;">
+                <div><i class="material-icons-round" style="color:var(--cyan)">hub</i> Neural Networking</div>
+                <div><i class="material-icons-round" style="color:var(--primary)">view_in_ar</i> Holographic UI</div>
+                <div><i class="material-icons-round" style="color:var(--accent)">psychology</i> Cognitive AI</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. SUBSCRIPTION & ACCESS -->
+    <section class="section-padding" id="access">
+        <div class="container">
+            <h2 class="gradient-text">SYSTEM ACCESS PROTOCOL</h2>
+            <p style="color: #94a3b8; margin-bottom: 50px;">Institutional Clearance required for full system unlock.</p>
+
+            <div class="grid-3">
+                <!-- Free Tier -->
+                <div class="glass-card">
+                    <h3>STANDARD TIER</h3>
+                    <h1 style="font-size: 3rem; margin: 20px 0; color: white;">FREE</h1>
+                    <ul>
+                        <li style="margin-bottom: 10px; color: #94a3b8;">✓ Basic Grade Tracking</li>
+                        <li style="margin-bottom: 10px; color: #94a3b8;">✓ Manual Schedule</li>
+                    </ul>
+                </div>
+
+                <!-- Student Scanner -->
+                <div class="glass-card" style="border-color: var(--cyan); box-shadow: 0 0 30px rgba(6,182,212,0.1);">
+                    <h3 style="color: var(--cyan); text-align: center; margin-bottom: 20px;">STUDENT ACTIVATION</h3>
+                    <div class="scanner-box" id="scan-trigger" onclick="activateScan()">
+                        <div class="scan-line"></div>
+                        <i class="material-icons-round" id="scan-icon" style="font-size: 50px; color: #64748b;">qr_code_scanner</i>
+                        <p id="scan-text" style="margin-top: 15px; color: #fff;">TAP TO SCAN LETTER</p>
+                    </div>
+                    <div style="text-align: center; margin-top: 20px;">
+                        <span id="counter" style="font-family: 'Orbitron'; font-size: 1.5rem; color: white;">6</span>
+                        <div style="font-size: 0.8rem; color: #94a3b8;">USERS ACTIVE</div>
+                    </div>
+                </div>
+
+                <!-- University Partner (Formulaire Trigger) -->
+                <div class="glass-card">
+                    <h3>INSTITUTE</h3>
+                    <h1 style="font-size: 3rem; margin: 20px 0; color: white;">PARTNER</h1>
+                    <ul>
+                        <li style="margin-bottom: 10px; color: #94a3b8;">✓ Full Admin Dashboard</li>
+                        <li style="margin-bottom: 10px; color: #94a3b8;">✓ AI Class Analytics</li>
+                        <li style="margin-bottom: 10px; color: #94a3b8;">✓ Bulk Student Upload</li>
+                    </ul>
+                    <button class="btn-main" onclick="openUniModal()" style="width: 100%; margin-top: 20px;">INITIATE PROTOCOL</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- MODAL 1: UNIVERSITY PARTNER (Existing) -->
+    <div id="univ-modal" class="custom-modal">
+        <div class="modal-content">
+            <i class="material-icons-round close-modal" onclick="closeModal('univ-modal')">close</i>
+            <h2 style="color: var(--cyan); margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 15px;">
+                <i class="material-icons-round" style="vertical-align: bottom;">domain_verification</i> INSTITUTIONAL ACCESS
+            </h2>
+            <p style="color: #94a3b8; margin-bottom: 25px;">Please verify administrative credentials to receive an API Key.</p>
+            
+            <form id="uniForm" onsubmit="submitUniForm(event)">
+                <div class="form-group">
+                    <label>Official Institution Name</label>
+                    <input type="text" required placeholder="e.g. Institut Supérieur d'Informatique">
+                </div>
+                <button type="submit" class="btn-main" style="width: 100%;">TRANSMIT REQUEST</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: FILE VERIFICATION (NEW FEATURE) -->
+    <!-- This opens when clicking Download or Launch Portal -->
+    <div id="verify-modal" class="custom-modal">
+        <div class="modal-content">
+            <i class="material-icons-round close-modal" onclick="closeModal('verify-modal')">close</i>
+            <h2 style="color: var(--accent); margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 15px;">
+                <i class="material-icons-round" style="vertical-align: bottom;">fingerprint</i> IDENTITY VERIFICATION
+            </h2>
+            <p style="color: #94a3b8; margin-bottom: 25px;">
+                Security Level 4. Please upload your valid ID or Enrollment Letter (PDF) to proceed.
+            </p>
+            
+            <form onsubmit="submitVerification(event)">
+                <div class="form-group">
+                    <label>User Identifier / Matricule</label>
+                    <input type="text" required placeholder="Ex: 1900422">
+                </div>
+
+                <div class="form-group">
+                    <label>Upload Verification Document (.PDF Only)</label>
+                    <div style="border: 2px dashed var(--border); padding: 20px; text-align: center; border-radius: 10px; transition:0.3s;" 
+                         onmouseover="this.style.borderColor='var(--accent)'" 
+                         onmouseout="this.style.borderColor='var(--border)'">
+                        <i class="material-icons-round" style="font-size: 30px; color: #94a3b8;">cloud_upload</i>
+                        <input type="file" required accept="application/pdf" style="margin-top: 10px;">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-main" style="width: 100%; background: linear-gradient(90deg, var(--accent), var(--primary));">
+                    VERIFY & PROCEED
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 4. DOWNLOAD & TEACHER -->
+    <section class="section-padding" id="download">
+        <div class="container">
+            <div class="glass-card" style="text-align: center;">
+                <h2 style="margin-bottom: 40px;">CHOOSE YOUR INTERFACE</h2>
+                
+                <div class="grid-3">
+                    <div style="padding: 20px; border: 1px solid var(--border); border-radius: 10px;">
+                        <i class="material-icons-round" style="font-size: 50px; color: white;">phone_iphone</i>
+                        <h3 style="margin: 20px 0;">SCHOLATICA MOBILE</h3>
+                        <p style="color:#94a3b8; margin-bottom: 20px;">For Students & Learners</p>
+                        
+                        <!-- UPDATED BUTTON -->
+                        <button class="btn-main" onclick="openVerificationModal('student')">DOWNLOAD APP</button>
+                    </div>
+
+                    <div id="teacher" style="padding: 20px; border: 1px solid var(--cyan); border-radius: 10px; background: rgba(6,182,212,0.05);">
+                        <i class="material-icons-round" style="font-size: 50px; color: var(--cyan);">desktop_windows</i>
+                        <h3 style="margin: 20px 0; color: var(--cyan);">TEACHER NEXUS</h3>
+                        <p style="color:#94a3b8; margin-bottom: 20px;">Command Center for Faculty</p>
+                        
+                        <!-- UPDATED BUTTON -->
+                        <button class="btn-main" style="background: transparent; border: 1px solid var(--cyan);" onclick="openVerificationModal('teacher')">LAUNCH PORTAL</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 5. FOOTER -->
+    <footer id="contact">
+        <div class="container">
+            <div class="grid-3">
+                <div>
+                    <h3>SCHOLATICA</h3>
+                    <p style="color: #64748b; font-size: 0.9rem;">Tunisia's First AI Education Network.</p>
+                </div>
+                <div></div>
+                
+                <div class="glass-card" style="padding: 30px;">
+                    <h4 style="color: var(--danger); margin-bottom: 15px;"> <i class="material-icons-round" style="vertical-align: bottom;">bug_report</i> REPORT MALFUNCTION</h4>
+                    <form onsubmit="event.preventDefault(); alert('Report Ticket #9942 Created.');">
+                        <textarea rows="2" placeholder="Describe the anomaly..."></textarea>
+                        <button class="btn-main" style="width: 100%; background: var(--danger);">TRANSMIT REPORT</button>
+                    </form>
+                </div>
+            </div>
+            <div style="text-align: center; color: #475569; margin-top: 50px; font-size: 0.8rem;">
+                © 2024 SCHOLATICA SYSTEMS. SECURE SERVER CONNECTION . <br>
+                contact creator as:<a href="https://mohamedkchaini81-source.github.io/MED_KH_website" style="color: var(--cyan); text-decoration: none;">Med_Kh</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JAVASCRIPT ANIMATIONS & LOGIC -->
+    <script>
+        // --- MODAL & VERIFICATION LOGIC ---
+        let targetAction = ''; // To remember if user clicked 'student' or 'teacher'
+
+        // Function to open University Modal
+        function openUniModal() {
+            const modal = document.getElementById('univ-modal');
+            modal.style.display = 'flex';
+            setTimeout(() => { modal.classList.add('active'); }, 10);
+        }
+
+        // Function to open Verification Modal (PDF)
+        function openVerificationModal(type) {
+            targetAction = type;
+            const modal = document.getElementById('verify-modal');
+            modal.style.display = 'flex';
+            setTimeout(() => { modal.classList.add('active'); }, 10);
+        }
+
+        // General Close Modal Function
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.remove('active');
+            setTimeout(() => { modal.style.display = 'none'; }, 300);
+        }
+
+        // Handle the File Verification Submit
+        function submitVerification(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            const originalText = btn.innerText;
+            
+            // 1. Show Uploading Animation
+            btn.innerHTML = "ANALYZING PDF <i class='material-icons-round' style='font-size:16px; animation:spin 1s infinite linear'>refresh</i>";
+            
+            // 2. Simulate Delay (2 seconds)
+            setTimeout(() => {
+                btn.style.background = "var(--success)";
+                btn.innerHTML = "<i class='material-icons-round'>check_circle</i> VERIFIED";
+                
+                // 3. Perform the Action (Download or Redirect)
+                setTimeout(() => {
+                    closeModal('verify-modal');
+                    
+                    if(targetAction === 'student') {
+                        // Action for Download App
+                        alert("Verification Successful. \n\nStarting Download: Scholatica_Build_v4.2.apk ...");
+                    } else if (targetAction === 'teacher') {
+                        // Action for Launch Portal
+                        window.location.href = 'index.html'; // Redirects to index.html (or your dashboard link)
+                    }
+
+                    // Reset button for next time
+                    setTimeout(() => { 
+                        btn.innerText = originalText; 
+                        btn.style.background = "linear-gradient(90deg, var(--accent), var(--primary))";
+                    }, 500);
+                }, 1000);
+            }, 2000);
+        }
+
+        function submitUniForm(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            const originalText = btn.innerText;
+            btn.innerHTML = "ENCRYPTING DATA...";
+            setTimeout(() => {
+                btn.style.background = "var(--success)";
+                btn.innerHTML = "REQUEST TRANSMITTED";
+                setTimeout(() => {
+                    closeModal('univ-modal');
+                    setTimeout(() => { btn.innerText = originalText; btn.style.background = ""; }, 500);
+                }, 1000);
+            }, 1500);
+        }
+
+        // --- 3D BACKGROUND ENGINE ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('world'), alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        const geometry = new THREE.PlaneGeometry(100, 100, 40, 40);
+        const material = new THREE.MeshBasicMaterial({ 
+            color: 0x06b6d4, wireframe: true, transparent: true, opacity: 0.3
+        });
+        const plane = new THREE.Mesh(geometry, material);
+        plane.rotation.x = -Math.PI / 2;
+        plane.position.y = -10;
+        scene.add(plane);
+
+        camera.position.z = 10;
+        camera.position.y = 2;
+
+        const clock = new THREE.Clock();
+        function animate() {
+            const t = clock.getElapsedTime();
+            const pos = geometry.attributes.position;
+            for (let i = 0; i < pos.count; i++) {
+                const x = pos.getX(i);
+                const y = pos.getY(i); 
+                const z = Math.sin(x * 0.5 + t) * Math.cos(y * 0.5 + t) * 2;
+                pos.setZ(i, z);
+            }
+            pos.needsUpdate = true;
+            plane.rotation.z += 0.002;
+            renderer.render(scene, camera);
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+        });
+
+        // --- SCANNER ANIMATION ---
+        function activateScan() {
+            const line = document.querySelector('.scan-line');
+            const icon = document.getElementById('scan-icon');
+            const text = document.getElementById('scan-text');
+            const counter = document.getElementById('counter');
+
+            line.style.display = 'block';
+            text.innerText = "SCANNING DOCUMENT...";
+            text.style.color = "var(--cyan)";
+
+            setTimeout(() => {
+                line.style.display = 'none';
+                icon.innerHTML = 'check_circle';
+                icon.style.color = 'var(--success)';
+                text.innerText = "ACCESS GRANTED";
+                text.style.color = 'var(--success)';
+                let count = 12402;
+                const interval = setInterval(() => {
+                    count++;
+                    counter.innerText = count.toLocaleString();
+                    if(count > 12410) clearInterval(interval);
+                }, 100);
+            }, 3000);
+        }
+        
+        // CSS for spin animation inside button
+        const style = document.createElement('style');
+        style.innerHTML = `@keyframes spin { 0% {transform:rotate(0deg);} 100% {transform:rotate(360deg);} }`;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
